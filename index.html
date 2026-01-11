@@ -1,12 +1,15 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <title>Focus Reader</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
     <style>
-        * { box-sizing: border-box; }
+        * {
+            box-sizing: border-box;
+        }
 
         body {
             margin: 0;
@@ -28,7 +31,7 @@
             background: linear-gradient(180deg, #141414, #0b0b0b);
             border-radius: 18px;
             padding: 24px;
-            box-shadow: 0 30px 80px rgba(0,0,0,0.9);
+            box-shadow: 0 30px 80px rgba(0, 0, 0, 0.9);
         }
 
         h2 {
@@ -65,7 +68,9 @@
             overflow: hidden;
         }
 
-        .accordion-content.collapsed { max-height: 0; }
+        .accordion-content.collapsed {
+            max-height: 0;
+        }
 
         textarea {
             width: 100%;
@@ -115,172 +120,259 @@
             line-height: 1.6;
             text-align: center;
             min-height: 100px;
-            transition: color 0.3s ease;
         }
 
         #status {
-            margin-top: 12px;
+            margin-top: 14px;
             text-align: center;
             font-size: 13px;
-            color: #4caf50;
-        }
-
-        .features {
-            margin-top: 26px;
-            padding-top: 14px;
-            border-top: 1px solid #222;
-            text-align: center;
-            font-size: 13px;
+            line-height: 1.6;
             color: #9a9a9a;
         }
 
+        #heard {
+            color: #4caf50;
+        }
+
         .creator {
-            margin-top: 10px;
+            margin-top: 12px;
             text-align: center;
             font-size: 12px;
             color: #666;
         }
 
-        @media (max-width: 480px) {
-            #output { font-size: 18px; }
+        textarea::-webkit-scrollbar,
+        .accordion-content::-webkit-scrollbar,
+        #output::-webkit-scrollbar {
+            width: 0px;
+            height: 0px;
+        }
+
+        textarea::-webkit-scrollbar-track,
+        .accordion-content::-webkit-scrollbar-track,
+        #output::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        textarea::-webkit-scrollbar-thumb,
+        .accordion-content::-webkit-scrollbar-thumb,
+        #output::-webkit-scrollbar-thumb {
+            background: transparent;
+        }
+
+        textarea,
+        .accordion-content,
+        #output {
+            scrollbar-width: none;
+            /* hides scrollbar */
+            scrollbar-color: #000 #000;
+            /* fallback */
+        }
+
+        textarea {
+            -webkit-overflow-scrolling: touch;
         }
     </style>
 </head>
+
 <body>
 
-<div class="app" id="app">
-    <h2>Focus Reader</h2>
-    <div class="tagline">Read one sentence at a time. Stay focused.</div>
+    <div class="app" id="app">
+        <h2>Focus Reader</h2>
+        <div class="tagline">Read one sentence at a time. Stay focused.</div>
 
-    <div class="accordion">
-        <div class="accordion-header" onclick="toggleAccordion()">Paste Paragraph</div>
-        <div class="accordion-content" id="accordionContent">
-            <textarea id="textInput" placeholder="Paste your paragraph here..."></textarea>
+        <div class="accordion">
+            <div class="accordion-header" onclick="toggleAccordion()">Paste Paragraph</div>
+            <div class="accordion-content" id="accordionContent">
+                <textarea id="textInput" placeholder="Paste your paragraph here..."></textarea>
+            </div>
+        </div>
+
+        <div class="buttons">
+            <button onclick="start()">
+                <svg viewBox="0 0 24 24">
+                    <path d="M8 5v14l11-7z" />
+                </svg>
+                Start
+            </button>
+            <button onclick="startListening()">
+                <svg viewBox="0 0 24 24">
+                    <path
+                        d="M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 14 0z" />
+                </svg>
+                Voice
+            </button>
+            <button onclick="stopListening()">
+                <svg viewBox="0 0 24 24">
+                    <path d="M6 6h12v12H6z" />
+                </svg>
+                Stop
+            </button>
+        </div>
+
+        <div id="output">Waiting for text...</div>
+
+        <div id="status">
+            <div>Say: continue | next | previous | repeat | stop</div>
+            <div id="heard"></div>
+        </div>
+
+        <div class="creator">
+            Created by yashwaghadhare
         </div>
     </div>
 
-    <div class="buttons">
-        <button onclick="start()">
-            <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-            Start
-        </button>
-        <button onclick="startListening()">
-            <svg viewBox="0 0 24 24"><path d="M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 14 0z"/></svg>
-            Voice
-        </button>
-        <button onclick="stopListening()">
-            <svg viewBox="0 0 24 24"><path d="M6 6h12v12H6z"/></svg>
-            Stop
-        </button>
-    </div>
+    <script>
+        let sentences = [];
+        let index = 0;
 
-    <div id="output">Waiting for text...</div>
-    <div id="status"></div>
+        let words = [];
+        let wordIndex = 0;
 
-    <div class="features">
-        Navigate using voice, keyboard, or swipe.
-    </div>
+        let recognition = null;
+        let isListening = false;
+        let isSpeaking = false;
+        let heartbeat = null;
+        let lastHeardTime = Date.now();
 
-    <div class="creator">
-        Created by yashwaghadhare
-    </div>
-</div>
+        let audioCtx = null;
 
-<script>
-    let sentences = [];
-    let index = 0;
-    let recognition = null;
-    let isListening = false;
+        function playBeep() {
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
 
-    function speak(text) {
-        if (!window.speechSynthesis) return;
-        window.speechSynthesis.cancel();
-        const utterance = new SpeechSynthesisUtterance(text);
-        utterance.rate = 0.85;
-        utterance.pitch = 1;
-        utterance.volume = 1;
-        speechSynthesis.speak(utterance);
-    }
+            osc.frequency.value = 800;
+            gain.gain.value = 0.05;
 
-    function toggleAccordion() {
-        document.getElementById("accordionContent").classList.toggle("collapsed");
-    }
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
 
-    function start() {
-        const text = document.getElementById("textInput").value.trim();
-        if (!text) return;
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.12);
+        }
 
-        sentences = text.split(/(?<=[.!?])\s+/).filter(Boolean);
-        index = 0;
-        showCurrent(true);
-        document.getElementById("accordionContent").classList.add("collapsed");
-    }
+        function toggleAccordion() {
+            document.getElementById("accordionContent").classList.toggle("collapsed");
+        }
 
-    function showCurrent(shouldSpeak = true) {
-        const output = document.getElementById("output");
-        output.innerText = sentences[index];
-        output.style.color = index === sentences.length - 1 ? "#ff4d4d" : "#e6e6e6";
-        if (shouldSpeak) speak(sentences[index]);
-    }
+        function speak(text) {
+            speechSynthesis.cancel();
+            isSpeaking = true;
 
-    function showNext() {
-        if (index < sentences.length - 1) index++;
-        showCurrent(true);
-    }
+            const u = new SpeechSynthesisUtterance(text);
+            u.rate = 0.85;
 
-    function showPrevious() {
-        if (index > 0) index--;
-        showCurrent(true);
-    }
+            u.onend = () => {
+                isSpeaking = false;
+                lastHeardTime = Date.now();
+            };
 
-    function startListening() {
-        if (!sentences.length || !('webkitSpeechRecognition' in window)) return;
+            speechSynthesis.speak(u);
+        }
 
-        if (recognition) recognition.stop();
-        recognition = new webkitSpeechRecognition();
-        recognition.lang = "en-IN";
-        recognition.continuous = false;
-        isListening = true;
+        function start() {
+            const text = document.getElementById("textInput").value.trim();
+            if (!text) return;
 
-        recognition.onresult = e => {
-            const t = e.results[0][0].transcript.toLowerCase();
-            if (t.includes("next")) showNext();
-            else if (t.includes("previous") || t.includes("back")) showPrevious();
-            else if (t.includes("repeat")) showCurrent(true);
-            else if (t.includes("stop")) stopListening();
-        };
+            sentences = text.split(/(?<=[.!?])\s+/).filter(Boolean);
+            index = 0;
+            prepareWords();
+            showCurrent(true);
 
-        recognition.onend = () => isListening && recognition.start();
-        recognition.start();
-        document.getElementById("status").innerText =
-            "Focus Reader listening — speaking enabled";
-    }
+            document.getElementById("accordionContent").classList.add("collapsed");
+        }
 
-    function stopListening() {
-        isListening = false;
-        if (recognition) recognition.stop();
-        speechSynthesis.cancel();
-        document.getElementById("status").innerText = "Voice stopped";
-    }
+        function prepareWords() {
+            words = sentences[index].split(/\s+/);
+            wordIndex = 0;
+        }
 
-    document.addEventListener("keydown", e => {
-        if (!sentences.length) return;
-        if (e.key === "ArrowRight" || e.key === " ") showNext();
-        if (e.key === "ArrowLeft") showPrevious();
-        if (e.key.toLowerCase() === "r") showCurrent(true);
-        if (e.key === "Escape") stopListening();
-    });
+        function showCurrent(say = true) {
+            document.getElementById("output").innerText = sentences[index];
+            if (say) speak(sentences[index]);
+            prepareWords();
+        }
 
-    let startX = 0;
-    document.getElementById("app").addEventListener("touchstart", e => {
-        startX = e.touches[0].clientX;
-    });
+        function showNext() {
+            if (index < sentences.length - 1) {
+                index++;
+                showCurrent(true);
+            }
+        }
 
-    document.getElementById("app").addEventListener("touchend", e => {
-        const diff = e.changedTouches[0].clientX - startX;
-        if (Math.abs(diff) > 50) diff < 0 ? showNext() : showPrevious();
-    });
-</script>
+        function showPrevious() {
+            if (index > 0) {
+                index--;
+                showCurrent(true);
+            }
+        }
+
+        function speakNextThreeWords() {
+            if (wordIndex >= words.length) {
+                showNext();
+                return;
+            }
+
+            const chunk = words.slice(wordIndex, wordIndex + 3).join(" ");
+            wordIndex += 3;
+            speak(chunk);
+
+            if (wordIndex >= words.length) {
+                setTimeout(showNext, 600);
+            }
+        }
+
+        function restartRecognition() {
+            if (!isListening || isSpeaking) return;
+            try {
+                recognition.start();
+                playBeep();
+            } catch { }
+        }
+
+        function startListening() {
+            if (!sentences.length || !('webkitSpeechRecognition' in window)) return;
+
+            isListening = true;
+            lastHeardTime = Date.now();
+
+            recognition = new webkitSpeechRecognition();
+            recognition.lang = "en-IN";
+            recognition.continuous = false;
+
+            recognition.onresult = e => {
+                const t = e.results[0][0].transcript.toLowerCase();
+                document.getElementById("heard").innerText = "You said: " + t;
+                lastHeardTime = Date.now();
+
+                if (t.includes("continue")) speakNextThreeWords();
+                else if (t.includes("next")) showNext();
+                else if (t.includes("previous") || t.includes("back")) showPrevious();
+                else if (t.includes("repeat")) showCurrent(true);
+                else if (t.includes("stop")) stopListening();
+            };
+
+            recognition.onend = restartRecognition;
+            recognition.start();
+            playBeep();
+
+            heartbeat = setInterval(() => {
+                if (isListening && Date.now() - lastHeardTime > 5000) {
+                    restartRecognition();
+                }
+            }, 3000);
+        }
+
+        function stopListening() {
+            isListening = false;
+            clearInterval(heartbeat);
+            if (recognition) recognition.stop();
+            speechSynthesis.cancel();
+            document.getElementById("heard").innerText = "";
+        }
+    </script>
 
 </body>
+
 </html>
