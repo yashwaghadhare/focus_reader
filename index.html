@@ -316,11 +316,11 @@
 
             speak(chunk);
 
-            if (wordIndex >= words.length) {
-                setTimeout(() => {
-                    showNext();
-                }, 600);
-            }
+            // if (wordIndex >= words.length) {
+            //     setTimeout(() => {
+            //         showNext();
+            //     }, 600);
+            // }
         }
 
         function restartRecognition() {
@@ -358,7 +358,7 @@
             playBeep();
 
             heartbeat = setInterval(() => {
-                if (isListening && Date.now() - lastHeardTime > 5000) {
+                if (isListening && Date.now() - lastHeardTime > 3000) {
                     restartRecognition();
                 }
             }, 1500);
