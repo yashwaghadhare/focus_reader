@@ -358,10 +358,10 @@
             playBeep();
 
             heartbeat = setInterval(() => {
-                if (isListening && Date.now() - lastHeardTime > 3000) {
+                if (isListening && Date.now() - lastHeardTime > 4000) {
                     restartRecognition();
                 }
-            }, 1500);
+            }, 2500);
         }
 
         function stopListening() {
