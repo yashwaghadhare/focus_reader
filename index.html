@@ -309,17 +309,17 @@
         }
 
         function speakNextThreeWords() {
-            if (wordIndex >= words.length) {
-                showNext();
-                return;
-            }
+            if (wordIndex >= words.length) return;
 
             const chunk = words.slice(wordIndex, wordIndex + 3).join(" ");
             wordIndex += 3;
+
             speak(chunk);
 
             if (wordIndex >= words.length) {
-                setTimeout(showNext, 600);
+                setTimeout(() => {
+                    showNext();
+                }, 600);
             }
         }
 
@@ -361,7 +361,7 @@
                 if (isListening && Date.now() - lastHeardTime > 5000) {
                     restartRecognition();
                 }
-            }, 3000);
+            }, 1500);
         }
 
         function stopListening() {
